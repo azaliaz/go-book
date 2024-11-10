@@ -1,30 +1,29 @@
 package storage
 
 import (
-	"errors"
-
 	"github.com/azaliaz/go-book/internal/domain/models"
 	"github.com/azaliaz/go-book/internal/logger"
+	storerrors "github.com/azaliaz/go-book/internal/storage/errors"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
-type MemuserStorage struct {
+type MemStorage struct {
 	userStor map[string]models.User
 	bookStor map[string]models.Book
 }
 
-func New() *MemuserStorage {
-	return &MemuserStorage{
+func New() *MemStorage {
+	return &MemStorage{
 		userStor: make(map[string]models.User),
 		bookStor: make(map[string]models.Book),
 	}
 }
-func (ms *MemuserStorage) SaveUser(user models.User) (string, error) {
+func (ms *MemStorage) SaveUser(user models.User) (string, error) {
 	log := logger.Get()
 	uuid := uuid.New().String()
 	if _, err := ms.findUser(user.Email); err == nil {
-		return "", errors.New("user already exists")
+		return "", storerrors.ErrUserExists
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(user.Pass), bcrypt.DefaultCost)
 	user.Pass = string(hash)
@@ -39,7 +38,7 @@ func (ms *MemuserStorage) SaveUser(user models.User) (string, error) {
 	log.Debug().Any("userStorage", ms.userStor).Send()
 	return uuid, nil
 }
-func (ms *MemuserStorage) ValidUser(user models.User) (string, error) {
+func (ms *MemStorage) ValidUser(user models.User) (string, error) {
 	log := logger.Get()
 	log.Debug().Any("userStorage", ms.userStor).Send()
 	memuser, err := ms.findUser(user.Email)
@@ -47,11 +46,22 @@ func (ms *MemuserStorage) ValidUser(user models.User) (string, error) {
 		return "", err
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(memuser.Pass), []byte(user.Pass)); err != nil {
-		return "", errors.New("invalid password")
+		return "", storerrors.ErrInvalidPassword
 	}
 	return memuser.UID, nil
 }
-func (ms *MemuserStorage) SaveBook(book models.Book) error {
+
+func (ms *MemStorage) GetUser(uid string) (models.User, error) {
+	log := logger.Get()
+	user, ok := ms.userStor[uid]
+	if !ok {
+		log.Error().Str("uid", uid).Msg("user not found")
+		return models.User{}, storerrors.ErrorUserNotFound
+	}
+	return user, nil
+}
+
+func (ms *MemStorage) SaveBook(book models.Book) error {
 	memBook, err := ms.findBook(book)
 	if err == nil {
 		memBook.Count++
@@ -64,19 +74,38 @@ func (ms *MemuserStorage) SaveBook(book models.Book) error {
 	return nil
 }
 
-func (ms *MemuserStorage) findUser(login string) (models.User, error) {
+func (ms *MemStorage) findUser(login string) (models.User, error) {
 	for _, user := range ms.userStor {
 		if user.Email == login {
 			return user, nil
 		}
 	}
-	return models.User{}, errors.New("user does not exists")
+	return models.User{}, storerrors.ErrUserDoesNotExists
 }
-func (ms *MemuserStorage) findBook(value models.Book) (models.Book, error) {
+func (ms *MemStorage) findBook(value models.Book) (models.Book, error) {
 	for _, book := range ms.bookStor {
 		if book.Lable == value.Lable && book.Author == value.Author {
 			return book, nil
 		}
 	}
-	return models.Book{}, errors.New("user does not exists")
+	return models.Book{}, storerrors.ErrBookDoesNotExists
+}
+func (ms *MemStorage) GetBooks() ([]models.Book, error) {
+	var books []models.Book
+	for _, book := range ms.bookStor {
+		books = append(books, book)
+	}
+	if len(books) < 1 {
+		return nil, storerrors.ErrEmptyBookList
+	}
+	return books, nil
+}
+func (ms *MemStorage) GetBook(buid string) (models.Book, error) {
+	log := logger.Get()
+	book, ok := ms.bookStor[buid]
+	if !ok {
+		log.Error().Str("buid", buid).Msg("book not found")
+		return models.Book{}, storerrors.ErrBookDoesNotExists
+	}
+	return book, nil
 }

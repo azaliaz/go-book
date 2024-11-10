@@ -1,11 +1,13 @@
 package server
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/azaliaz/go-book/internal/config"
 	"github.com/azaliaz/go-book/internal/domain/models"
 	"github.com/azaliaz/go-book/internal/logger"
+	storerrors "github.com/azaliaz/go-book/internal/storage/errors"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
@@ -14,6 +16,9 @@ type Storage interface {
 	SaveUser(models.User) (string, error)
 	ValidUser(models.User) (string, error)
 	SaveBook(models.Book) error
+	GetUser(string) (models.User, error)
+	GetBooks() ([]models.Book, error)
+	GetBook(string) (models.Book, error)
 }
 
 type Server struct {
@@ -48,7 +53,6 @@ func (s *Server) Run() error {
 		books.GET("/:id", s.bookInfo)
 
 	}
-	router.POST("/get-book", s.getBook)
 	router.POST("/add-book", s.addBook)
 	router.POST("/book-return", s.bookReturn)
 	s.serv.Handler = router
@@ -75,6 +79,11 @@ func (s *Server) register(ctx *gin.Context) {
 
 	uuid, err := s.storage.SaveUser(user)
 	if err != nil {
+		if errors.Is(err, storerrors.ErrUserExists) {
+			log.Error().Msg(err.Error())
+			ctx.String(http.StatusConflict, err.Error())
+			return
+		}
 		log.Error().Err(err).Msg("save user failed")
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -100,22 +109,51 @@ func (s *Server) login(ctx *gin.Context) {
 	}
 	uuid, err := s.storage.ValidUser(user)
 	if err != nil {
-		log.Error().Err(err).Msg("user not found")
-		ctx.String(http.StatusNotFound, "invalid login or password: %w", err)
+		if errors.Is(err, storerrors.ErrUserDoesNotExists) {
+			log.Error().Err(err).Msg("user not found")
+			ctx.String(http.StatusNotFound, "invalid login or password")
+		}
+		if errors.Is(err, storerrors.ErrInvalidPassword) {
+			log.Error().Err(err).Msg("invalid pass")
+			ctx.String(http.StatusUnauthorized, err.Error())
+			return
+		}
+
+		log.Error().Err(err).Msg("validate user failed")
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	ctx.String(200, "user %s are logined", uuid)
 }
 func (s *Server) userInfo(ctx *gin.Context) {
-
+	//TODO: возможно быть возможно тольки про наличии токена
+	//TODO: (когда пользователь вошел в систему)
+	id := ctx.Param("id")
+	user, err := s.storage.GetUser(id)
+	if err != nil {
+		if errors.Is(err, storerrors.ErrorUserNotFound) {
+			ctx.String(http.StatusNotFound, err.Error())
+			return
+		}
+		ctx.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	ctx.JSON(http.StatusNotFound, user)
 }
 func (s *Server) allBooks(ctx *gin.Context) {
-
+	books, err := s.storage.GetBooks()
+	if err != nil {
+		if errors.Is(err, storerrors.ErrEmptyBookList) {
+			ctx.String(http.StatusNotFound, err.Error())
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	ctx.JSON(http.StatusOK, books)
 }
-func (s *Server) getBook(ctx *gin.Context) {
 
-}
 func (s *Server) addBook(ctx *gin.Context) {
 	log := logger.Get()
 	var book models.Book
@@ -133,7 +171,19 @@ func (s *Server) addBook(ctx *gin.Context) {
 
 }
 func (s *Server) bookInfo(ctx *gin.Context) {
-
+	//TODO: возможно быть возможно тольки про наличии токена
+	//TODO: (когда пользователь вошел в систему)
+	id := ctx.Param("id")
+	book, err := s.storage.GetBook(id)
+	if err != nil {
+		if errors.Is(err, storerrors.ErrBookDoesNotExists) {
+			ctx.String(http.StatusNotFound, err.Error())
+			return
+		}
+		ctx.String(http.StatusInternalServerError, err.Error())
+		return
+	}
+	ctx.JSON(http.StatusNotFound, book)
 }
 func (s *Server) bookReturn(ctx *gin.Context) {
 
