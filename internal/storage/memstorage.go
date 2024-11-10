@@ -2,9 +2,9 @@ package storage
 
 import (
 	"errors"
-	"helloapp/internal/domain/models"
-	"helloapp/internal/logger"
 
+	"github.com/azaliaz/go-book/internal/domain/models"
+	"github.com/azaliaz/go-book/internal/logger"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )

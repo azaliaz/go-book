@@ -1,4 +1,4 @@
-module helloapp
+module github.com/azaliaz/go-book
 
 go 1.22.6
 
@@ -8,7 +8,6 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/rs/zerolog v1.33.0
 	golang.org/x/crypto v0.29.0
-	golang.org/x/mod v0.22.0
 )
 
 require (

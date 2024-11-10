@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"helloapp/internal/config"
-	"helloapp/internal/logger"
-	"helloapp/internal/server"
 
-	"helloapp/internal/storage"
+	"github.com/azaliaz/go-book/internal/config"
+	"github.com/azaliaz/go-book/internal/logger"
+	"github.com/azaliaz/go-book/internal/server"
+	"github.com/azaliaz/go-book/internal/storage"
 )
 
 func main() {

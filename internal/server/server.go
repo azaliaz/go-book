@@ -1,12 +1,11 @@
 package server
 
 import (
-	"helloapp/internal/config"
-	"helloapp/internal/domain/models"
-	"helloapp/internal/logger"
-
 	"net/http"
 
+	"github.com/azaliaz/go-book/internal/config"
+	"github.com/azaliaz/go-book/internal/domain/models"
+	"github.com/azaliaz/go-book/internal/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 )
