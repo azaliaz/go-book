@@ -1,4 +1,4 @@
-package userStorage
+package storage
 
 import (
 	"errors"

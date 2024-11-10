@@ -5,6 +5,7 @@ import (
 	"helloapp/internal/config"
 	"helloapp/internal/logger"
 	"helloapp/internal/server"
+
 	"helloapp/internal/storage"
 )
 
@@ -13,7 +14,6 @@ func main() {
 	fmt.Println(cfg)
 	log := logger.Get(cfg.Debug)
 	log.Debug().Any("cfg", cfg).Send()
-
 	stor := storage.New()
 
 	serv := server.New(*cfg, stor)
