@@ -39,18 +39,17 @@ func (s *Server) Run() error {
 	log := logger.Get()
 	router := gin.Default()
 	router.GET("/", func(ctx *gin.Context) { ctx.String(200, "Hello") })
-
 	users := router.Group("/users")
 	{
+		users.GET("/:id/info", s.userInfo)
 		users.POST("/register", s.register)
 		users.POST("/login", s.login)
-		users.GET("/:id", s.userInfo)
 
 	}
 	books := router.Group("/books")
 	{
-		books.GET("/", s.allBooks)
 		books.GET("/:id", s.bookInfo)
+		books.GET("/", s.allBooks)
 
 	}
 	router.POST("/add-book", s.addBook)
